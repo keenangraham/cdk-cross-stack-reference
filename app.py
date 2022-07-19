@@ -1,3 +1,4 @@
+from aws_cdk import App
 from aws_cdk import Stack
 from aws_cdk import Duration
 from aws_cdk import RemovalPolicy
@@ -74,7 +75,7 @@ class ConsumerStack(Stack):
         )
 
 
-app = cdk.App()
+app = App()
 
 producer = ProducerStack(
     app,
