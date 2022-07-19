@@ -1,28 +1,92 @@
-#!/usr/bin/env python3
-import os
+from aws_cdk import Stack
+from aws_cdk import Duration
+from aws_cdk import RemovalPolicy
 
-import aws_cdk as cdk
+from constructs import Construct
 
-from cdk_cross_stack_reference.cdk_cross_stack_reference_stack import CdkCrossStackReferenceStack
+from shared_infrastructure.cherry_lab.environments import US_WEST_2
+from shared_infrastructure.cherry_lab.vpcs import VPCs
+
+from aws_cdk.aws_rds import DatabaseInstanceEngine
+from aws_cdk.aws_rds import PostgresEngineVersion
+from aws_cdk.aws_ec2 import InstanceType
+from aws_cdk.aws_ec2 import InstanceClass
+from aws_cdk.aws_ec2 import InstanceSize
+from aws_cdk.aws_ec2 import SubnetSelection
+from aws_cdk.aws_ec2 import SubnetType
+from aws_cdk.aws_ssm import StringParameter
+
+
+class ProducerStack(Stack):
+
+    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+        self.vpcs = VPCs(
+            self,
+            'VPCs'
+        )
+        self.engine = DatabaseInstanceEngine.postgres(
+            version=PostgresEngineVersion.VER_14_1
+        )
+        self.database_name = 'test'
+        self.database = DatabaseInstance(
+            self,
+            'Postgres',
+            database_name=database_name,
+            engine=engine,
+            instance_type=InstanceType.of(
+                InstanceClass.BURSTABLE3,
+                InstanceSize.MEDIUM,
+            ),
+            vpc=vpcs.default_vpc,
+            vpc_subnets=SubnetSelection(
+                subnet_type=SubnetType.PUBLIC,
+            ),
+            allocated_storage=5,
+            max_allocated_storage=10,
+            backup_retention=Duration.days(0),
+            delete_automated_backups=True,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+
+class ConsumerStack(Stack):
+
+    def __init__(self, scope: Construct, construct_id: str, producer: ProducerStack, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+
+        hostname = StringParameter(
+            self,
+            'Hostname',
+            string_value=producer.database.instance_endpoint.hostname,
+        )
+
+        database_name = StringParameter(
+            self,
+            'DatabaseName',
+            string_value=producer.database_name,
+        )
+
+        secret = StringParameter(
+            self,
+            'DBSecret',
+            string_value=producer.database.secret
+        )
 
 
 app = cdk.App()
-CdkCrossStackReferenceStack(app, "CdkCrossStackReferenceStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
+producer = ProducerStack(
+    app,
+    'ProducerStack',
+    env=US_WEST_2,
+)
 
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
-
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
-
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
-
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+consumer = ConsumerStack(
+    app,
+    'ConsumerStack',
+    producer=producer,
+    env=US_WEST_2,
+)
 
 app.synth()
