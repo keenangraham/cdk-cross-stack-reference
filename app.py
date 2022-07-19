@@ -8,6 +8,7 @@ from constructs import Construct
 from shared_infrastructure.cherry_lab.environments import US_WEST_2
 from shared_infrastructure.cherry_lab.vpcs import VPCs
 
+from aws_cdk.aws_rds import DatabaseInstance
 from aws_cdk.aws_rds import DatabaseInstanceEngine
 from aws_cdk.aws_rds import PostgresEngineVersion
 from aws_cdk.aws_ec2 import InstanceType
@@ -33,13 +34,13 @@ class ProducerStack(Stack):
         self.database = DatabaseInstance(
             self,
             'Postgres',
-            database_name=database_name,
-            engine=engine,
+            database_name=self.database_name,
+            engine=self.engine,
             instance_type=InstanceType.of(
                 InstanceClass.BURSTABLE3,
                 InstanceSize.MEDIUM,
             ),
-            vpc=vpcs.default_vpc,
+            vpc=self.vpcs.default_vpc,
             vpc_subnets=SubnetSelection(
                 subnet_type=SubnetType.PUBLIC,
             ),
@@ -71,7 +72,7 @@ class ConsumerStack(Stack):
         secret = StringParameter(
             self,
             'DBSecret',
-            string_value=producer.database.secret
+            string_value=producer.database.secret.secret_value.unsafe_unwrap()
         )
 
 
