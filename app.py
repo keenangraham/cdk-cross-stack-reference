@@ -147,8 +147,6 @@ class ProducerStack(Stack):
             scope=self,
             config=config,
         )
-        #self.export_value(self.database.instance_endpoint.hostname)
-        #self.export_value(self.database.secret.secret_arn)
 
 
 class ConsumerStack(Stack):
