@@ -129,7 +129,7 @@ class ProducerStack(Stack):
                 ],
             },
             {
-                'on': False,
+                'on': True,
                 'construct': PostgresConstruct,
                 'construct_id': 'PostgresConstruct2',
                 'kwargs': {
