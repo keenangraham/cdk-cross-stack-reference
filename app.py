@@ -52,18 +52,13 @@ class ConstructMultiplexer:
             self.apply_export_values(name, item)
 
     def apply_export_values(self, name, item):
-        parent_stack = self.find_parent_stack()
+        parent_stack = Stack.of(self.scope)
         for path in item['export_values']:
             value = self.resources[name]
             split_path = path.split('.')
             for split in split_path:
                 value = getattr(value, split)
             parent_stack.export_value(value)
-
-    def find_parent_stack(self):
-        for node in reversed(self.scope.node.scopes):
-            if Stack.is_stack(node):
-                return node
 
 
 class PostgresConstruct(Construct):
@@ -129,7 +124,7 @@ class ProducerStack(Stack):
                 ],
             },
             {
-                'on': True,
+                'on': False,
                 'construct': PostgresConstruct,
                 'construct_id': 'PostgresConstruct2',
                 'kwargs': {
