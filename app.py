@@ -25,17 +25,16 @@ USE_A = True
 USE_B = False
 
 
-class Hotswap(Construct):
+class ConstructMultiplexer:
 
     def __init__(
             self,
             scope: Construct,
-            construct_id: str,
             *,
             config,
             **kwargs,
     ) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+        self.scope = scope
         self.resources = {}
         self.config = config
         self.create_resources()
@@ -46,7 +45,7 @@ class Hotswap(Construct):
                 continue
             name = item['construct_id']
             self.resources[name] = item['construct'](
-                self,
+                self.scope,
                 name,
                 **item['kwargs'],
             )
@@ -62,7 +61,7 @@ class Hotswap(Construct):
             parent_stack.export_value(value)
 
     def find_parent_stack(self):
-        for node in reversed(self.node.scopes):
+        for node in reversed(self.scope.node.scopes):
             if Stack.is_stack(node):
                 return node
 
@@ -144,9 +143,8 @@ class ProducerStack(Stack):
                 ],
             }
         ]
-        self.hotswap = Hotswap(
-            self,
-            'Hotswap',
+        self.multiplexer = ConstructMultiplexer(
+            scope=self,
             config=config,
         )
         #self.export_value(self.database.instance_endpoint.hostname)
@@ -158,18 +156,18 @@ class ConsumerStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, producer: ProducerStack, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        resource2 = producer.hotswap.resources.get('PostgresConstruct2')
+        resource = producer.multiplexer.resources.get('PostgresConstruct1')
 
         hostname = StringParameter(
             self,
             'Hostname2',
-            string_value=resource2.database.instance_endpoint.hostname,
+            string_value=resource.database.instance_endpoint.hostname,
         )
 
         secret = StringParameter(
             self,
             'DBSecretARN',
-            string_value=resource2.database.secret.secret_arn,
+            string_value=resource.database.secret.secret_arn,
         )
 
 
