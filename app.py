@@ -55,7 +55,6 @@ class ConstructMultiplexer:
             split_path = path.split('.')
             for split in split_path:
                 value = getattr(value, split)
-            print('export', path, value)
             parent_stack.export_value(value)
 
 
@@ -187,13 +186,19 @@ class ProducerStack(Stack):
                     'security_group_id': 'sg-067f520e33547bec2',
                     'secret_complete_arn': 'arn:aws:secretsmanager:us-west-2:618537831167:secret:PostgresConstruct2PostgresS-hyzbJXu8QM1z-taDJI7',
                 },
-                'export_values': [
-                ],
+                'export_values': [],
             }
         ]
         self.multiplexer = ConstructMultiplexer(
             scope=self,
             config=config,
+        )
+
+        self.first_stack_value = StringParameter(
+            self,
+            'FirstStackValue',
+            string_value='BBBBDe',
+            parameter_name='/look/up',
         )
 
 
@@ -203,11 +208,12 @@ class ConsumerStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         resource = producer.multiplexer.resources.get('ExistingPostgresConstruct')
+        resource2 = producer.multiplexer.resources.get('PostgresConstruct1')
 
         hostname = StringParameter(
             self,
             'Hostname',
-            string_value=resource.database.instance_endpoint.hostname,
+            string_value=resource2.database.instance_endpoint.hostname,
         )
 
         secret_arn = StringParameter(
@@ -229,6 +235,18 @@ class ConsumerStack(Stack):
             parameter_name='/some-branch/find/me/later',
         )
 
+        second_stack_value = StringParameter.from_string_parameter_name(
+            self,
+            'SecondStackValue',
+            string_parameter_name='/look/up'
+        )
+
+        second_copied_value = StringParameter(
+            self,
+            'SecondCopiedValue',
+            string_value=second_stack_value.string_value,
+            parameter_name='/look/up/copy'
+        )
 
 
 app = App()
